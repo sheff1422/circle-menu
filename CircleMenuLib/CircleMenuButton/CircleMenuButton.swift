@@ -28,17 +28,23 @@ internal class CircleMenuButton: UIButton {
     // MARK: properties
 
     weak var container: UIView?
+    
+    var padding: CGFloat = 3.0 {
+        didSet {
+            setNeedsLayout()
+        }
+    }
 
     // MARK: life cycle
 
-    init(size: CGSize, platform: UIView, distance: Float, angle: Float = 0) {
+    init(size: CGSize, platform: UIView, relativeView: UIView, distance: Float, angle: Float = 0) {
         super.init(frame: CGRect(origin: CGPoint(x: 0, y: 0), size: size))
 
         backgroundColor = UIColor(red: 0.79, green: 0.24, blue: 0.27, alpha: 1)
         layer.cornerRadius = size.height / 2.0
 
-        let aContainer = createContainer(CGSize(width: size.width, height: CGFloat(distance)), platform: platform)
-
+        let aContainer = createContainer(CGSize(width: size.width, height: CGFloat(distance)), platform: platform, relativeView: relativeView)
+        
         // hack view for rotate
         let view = UIView(frame: CGRect(x: 0, y: 0, width: bounds.width, height: bounds.height))
         view.backgroundColor = UIColor.clear
@@ -59,7 +65,7 @@ internal class CircleMenuButton: UIButton {
 
     // MARK: configure
 
-    fileprivate func createContainer(_ size: CGSize, platform: UIView) -> UIView {
+    fileprivate func createContainer(_ size: CGSize, platform: UIView, relativeView: UIView) -> UIView {
         let container = customize(UIView(frame: CGRect(origin: CGPoint(x: 0, y: 0), size: size))) {
             $0.backgroundColor = UIColor.clear
             $0.translatesAutoresizingMaskIntoConstraints = false
@@ -86,18 +92,17 @@ internal class CircleMenuButton: UIButton {
                                                    multiplier: 1,
                                                    constant: size.width))
 
-        platform.addConstraint(NSLayoutConstraint(item: platform,
-                                                  attribute: .centerX,
+        platform.addConstraint(NSLayoutConstraint(item: container,                                                                                  attribute: .centerX,
                                                   relatedBy: .equal,
-                                                  toItem: container,
+                                                  toItem: relativeView,
                                                   attribute: .centerX,
                                                   multiplier: 1,
                                                   constant: 0))
 
-        platform.addConstraint(NSLayoutConstraint(item: platform,
+        platform.addConstraint(NSLayoutConstraint(item: container,
                                                   attribute: .centerY,
                                                   relatedBy: .equal,
-                                                  toItem: container,
+                                                  toItem: relativeView,
                                                   attribute: .centerY,
                                                   multiplier: 1,
                                                   constant: 0))
@@ -125,6 +130,31 @@ internal class CircleMenuButton: UIButton {
         } else {
             container.layer.transform = rotateTransform
         }
+    }
+    
+    override var intrinsicContentSize: CGSize {
+        let maxSize = CGSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+        
+        if let titleSize = titleLabel?.sizeThatFits(maxSize), let imageSize = imageView?.sizeThatFits(maxSize) {
+            let width = ceil(max(imageSize.width, titleSize.width))
+            let height = ceil(imageSize.height + titleSize.height + padding)
+            
+            return CGSize(width: width, height: height)
+        }
+        
+        return super.intrinsicContentSize
+    }
+    
+    override func layoutSubviews() {
+        if let image = imageView?.image, let title = titleLabel?.attributedText {
+            let imageSize = image.size
+            let titleSize = title.size()
+            
+            titleEdgeInsets = UIEdgeInsets(top: 0.0, left: -imageSize.width, bottom: -(imageSize.height + padding), right: 0.0)
+            imageEdgeInsets = UIEdgeInsets(top: -(titleSize.height + padding), left: 0.0, bottom: 0.0, right: -titleSize.width)
+        }
+        
+        super.layoutSubviews()
     }
 }
 

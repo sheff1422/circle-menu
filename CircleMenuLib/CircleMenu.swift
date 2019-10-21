@@ -101,7 +101,7 @@ open class CircleMenu: UIButton {
     @IBInspectable open var endAngle: Float = 360
 
     // Pop buttons radius, if nil use center button size
-    open var subButtonsRadius: CGFloat?
+    @IBInspectable open var subButtonsRadius: CGFloat = 40
 
     // Show buttons event
     open var showButtonsEvent: UIControl.Event = UIControl.Event.touchUpInside {
@@ -111,12 +111,14 @@ open class CircleMenu: UIButton {
     }
 
     /// The object that acts as the delegate of the circle menu.
-    @IBOutlet open weak var delegate: AnyObject? // CircleMenuDelegate?
-
+   @objc @IBOutlet open weak var delegate: AnyObject? // CircleMenuDelegate?
+    
     var buttons: [UIButton]?
-    weak var platform: UIView?
-
+    @objc weak public var platform: UIView?
+    
     public var customNormalIconView: UIImageView?
+    weak public var expandedView: UIView?
+    var expandedViewSize: CGSize?
     public var customSelectedIconView: UIImageView?
 
     /**
@@ -131,14 +133,16 @@ open class CircleMenu: UIButton {
 
      - returns: A newly created circle menu.
      */
-    public init(frame: CGRect,
+    @objc public init(frame: CGRect,
                 normalIcon: String?,
+                expandedView: UIView?,
                 selectedIcon: String?,
                 buttonsCount: Int = 3,
                 duration: Double = 2,
                 distance: Float = 100) {
         super.init(frame: frame)
 
+        self.expandedView = expandedView
         if let icon = normalIcon {
             setImage(UIImage(named: icon), for: .normal)
         }
@@ -171,6 +175,16 @@ open class CircleMenu: UIButton {
         setImage(UIImage(), for: .normal)
         setImage(UIImage(), for: .selected)
     }
+    
+    @objc public func buttonWithIdx(idx: Int) -> UIButton? {
+        return self.buttons?[idx]
+    }
+    
+    @objc public func addExpandedReference(view: UIView, size: CGSize) {
+        expandedViewSize = size
+        expandedView = view
+        commonInit()
+    }
 
     // MARK: methods
 
@@ -190,11 +204,32 @@ open class CircleMenu: UIButton {
         tapBounceAnimation(duration: 0.5)
         tapRotatedAnimation(0.3, isSelected: false)
     }
+    
+    @objc open func contains(point: CGPoint, sourceView: UIView) -> Bool {
+        if let expandedView = expandedView, let superview = expandedView.superview  {
+            let convertedPoint = superview.convert(point, from: sourceView)
+            if expandedView.frame.contains(convertedPoint) {
+                return true
+            }
+        }
+        if let buttons = buttons {
+            for button in buttons {
+                guard let superview = button.superview else {
+                    continue
+                }
+                let convertedPoint = superview.convert(point, from: sourceView)
+                if button.frame.contains(convertedPoint) {
+                    return true
+                }
+            }
+        }
+        return false
+    }
 
     /**
      Check is sub buttons showed
      */
-    open func buttonsIsShown() -> Bool {
+    @objc open func buttonsIsShown() -> Bool {
         guard let buttons = self.buttons else {
             return false
         }
@@ -219,23 +254,27 @@ open class CircleMenu: UIButton {
         var buttons = [UIButton]()
 
         let step = getArcStep()
+        guard let expandedView = expandedView else {
+            return [UIButton]()
+        }
         for index in 0 ..< buttonsCount {
 
             let angle: Float = startAngle + Float(index) * step
             let distance = Float(bounds.size.height / 2.0)
             let buttonSize: CGSize
-            if let subButtonsRadius = self.subButtonsRadius {
+            if subButtonsRadius > 0 {
                 buttonSize = CGSize(width: subButtonsRadius * 2, height: subButtonsRadius * 2)
             } else {
                 buttonSize = bounds.size
             }
-            let button = customize(CircleMenuButton(size: buttonSize, platform: platform, distance: distance, angle: angle)) {
+            let button = customize(CircleMenuButton(size: buttonSize, platform: platform, relativeView: expandedView, distance: distance, angle: angle)) {
                 $0.tag = index
                 $0.addTarget(self, action: #selector(CircleMenu.buttonHandler(_:)), for: UIControl.Event.touchUpInside)
                 $0.alpha = 0
             }
             buttons.append(button)
         }
+        platform.bringSubviewToFront(expandedView)
         return buttons
     }
 
@@ -266,6 +305,35 @@ open class CircleMenu: UIButton {
 
         return iconView
     }
+    
+    fileprivate func addExpandedView(_ view: UIView) {
+        guard let platform = platform else {
+            return
+        }
+        view.translatesAutoresizingMaskIntoConstraints = false
+        platform.addSubview(view)
+
+        // added constraints
+        let height = expandedViewSize?.height ?? bounds.height
+        let width = expandedViewSize?.width ?? bounds.width
+        
+        view.addConstraint(NSLayoutConstraint(item: view, attribute: .height, relatedBy: .equal, toItem: nil,
+                                                  attribute: .height, multiplier: 1, constant: height))
+
+        view.addConstraint(NSLayoutConstraint(item: view, attribute: .width, relatedBy: .equal, toItem: nil,
+                                                  attribute: .width, multiplier: 1, constant: width))
+
+        platform.addConstraint(NSLayoutConstraint(item: view, attribute: .bottom, relatedBy: .equal, toItem: view.superview,
+                                         attribute: .bottom, multiplier: 1, constant: 0))
+
+        platform.addConstraint(NSLayoutConstraint(item: view, attribute: .trailing, relatedBy: .equal, toItem: view.superview,
+                                         attribute: .trailing, multiplier: 1, constant: 0))
+        
+        view.layer.shadowColor = UIColor(red: 0, green: 71.0/255.0, blue: 103.0/255.0, alpha: 1).cgColor
+        view.layer.shadowOpacity = 0.36
+        view.layer.shadowRadius = 12.0
+        view.layer.shadowOffset = CGSize(width: 0, height: 4.0)
+    }
 
     fileprivate func createPlatform() -> UIView {
         let platform = customize(UIView(frame: .zero)) {
@@ -286,7 +354,7 @@ open class CircleMenu: UIButton {
         }
         platform.addConstraints(sizeConstraints)
 
-        let centerConstraints = [NSLayoutConstraint.Attribute.centerX, .centerY].map {
+        let trailingConstraints = [NSLayoutConstraint.Attribute.bottom, .trailing].map {
             NSLayoutConstraint(item: self,
                                attribute: $0,
                                relatedBy: .equal,
@@ -295,7 +363,7 @@ open class CircleMenu: UIButton {
                                multiplier: 1,
                                constant: 0)
         }
-        superview?.addConstraints(centerConstraints)
+        superview?.addConstraints(trailingConstraints)
 
         return platform
     }
@@ -329,14 +397,17 @@ open class CircleMenu: UIButton {
 
     private var isBounceAnimating: Bool = false
 
-    @objc func onTap() {
+    @objc public func onTap() {
         guard isBounceAnimating == false else { return }
         isBounceAnimating = true
 
         if buttonsIsShown() == false {
             let platform = createPlatform()
-            buttons = createButtons(platform: platform)
             self.platform = platform
+            if let expandedView = expandedView {
+                addExpandedView(expandedView)
+            }
+            buttons = createButtons(platform: platform)
             DispatchQueue.main.asyncAfter(deadline: .now()) {
                 self.delegate?.menuOpened?(self)
             }
@@ -355,15 +426,20 @@ open class CircleMenu: UIButton {
         delegate?.circleMenu?(self, buttonWillSelected: sender, atIndex: sender.tag)
         
         let strokeWidth: CGFloat
-        if let radius = self.subButtonsRadius {
-            strokeWidth = radius * 2
+        if self.subButtonsRadius > 0 {
+            strokeWidth = self.subButtonsRadius * 2
         } else {
             strokeWidth = bounds.size.height
+        }
+        
+        guard let expandedView  = expandedView else {
+            return
         }
 
         let circle = CircleMenuLoader(radius: CGFloat(distance),
                                       strokeWidth: strokeWidth,
                                       platform: platform,
+                                      referenceView: expandedView,
                                       color: sender.backgroundColor)
 
         if let container = sender.container { // rotation animation
@@ -386,6 +462,13 @@ open class CircleMenu: UIButton {
             self.delegate?.circleMenu?(self, buttonDidSelected: sender, atIndex: sender.tag)
         })
 }
+    
+    @objc public func tryToCollapse() {
+        if buttonsIsShown() == false {
+            return
+        }
+        onTap()
+    }
 
     // MARK: animations
 
@@ -427,7 +510,7 @@ open class CircleMenu: UIButton {
 
     fileprivate func tapRotatedAnimation(_ duration: Float, isSelected: Bool) {
 
-        let addAnimations: (_ view: UIImageView, _ isShow: Bool) -> Void = { view, isShow in
+        let addAnimations: (_ view: UIView, _ isShow: Bool) -> Void = { view, isShow in
             var toAngle: Float = 180.0
             var fromAngle: Float = 0
             var fromScale = 1.0
@@ -472,12 +555,12 @@ open class CircleMenu: UIButton {
         if let customNormalIconView = self.customNormalIconView {
             addAnimations(customNormalIconView, !isSelected)
         }
-        if let customSelectedIconView = self.customSelectedIconView {
-            addAnimations(customSelectedIconView, isSelected)
+        if let expandedView = self.expandedView {
+            addAnimations(expandedView, isSelected)
         }
 
         self.isSelected = isSelected
-        alpha = isSelected ? 0.3 : 1
+        alpha = isSelected ? 1.0 : 1
     }
 
     fileprivate func hideCenterButton(duration: Double, delay: Double = 0) {
@@ -526,7 +609,7 @@ open class CircleMenu: UIButton {
         customNormalIconView?.layer.add(rotation, forKey: nil)
         customNormalIconView?.layer.add(show, forKey: nil)
 
-        customSelectedIconView?.layer.add(fade, forKey: nil)
+        expandedView?.layer.add(fade, forKey: nil)
     }
 }
 

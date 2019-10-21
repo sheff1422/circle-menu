@@ -33,13 +33,13 @@ internal class CircleMenuLoader: UIView {
 
     // MARK: life cycle
 
-    internal init(radius: CGFloat, strokeWidth: CGFloat, platform: UIView, color: UIColor?) {
+    internal init(radius: CGFloat, strokeWidth: CGFloat, platform: UIView, referenceView: UIView, color: UIColor?) {
         super.init(frame: CGRect(x: 0, y: 0, width: radius, height: radius))
 
         platform.addSubview(self)
 
         circle = createCircle(radius, strokeWidth: strokeWidth, color: color)
-        createConstraints(platform: platform, radius: radius)
+        createConstraints(platform: platform, referenceView: referenceView,radius: radius)
 
         let circleFrame = CGRect(
             x: radius * 2 - strokeWidth,
@@ -77,7 +77,7 @@ internal class CircleMenuLoader: UIView {
         return circle
     }
 
-    fileprivate func createConstraints(platform: UIView, radius: CGFloat) {
+    fileprivate func createConstraints(platform: UIView, referenceView: UIView, radius: CGFloat) {
 
         translatesAutoresizingMaskIntoConstraints = false
         // added constraints
@@ -93,7 +93,7 @@ internal class CircleMenuLoader: UIView {
         addConstraints(sizeConstraints)
 
         let centerConstaraints = [NSLayoutConstraint.Attribute.centerY, .centerX].map {
-            NSLayoutConstraint(item: platform,
+            NSLayoutConstraint(item: referenceView,
                                attribute: $0,
                                relatedBy: .equal,
                                toItem: self,
