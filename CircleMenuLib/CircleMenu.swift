@@ -119,7 +119,6 @@ open class CircleMenu: UIButton {
     public var customNormalIconView: UIImageView?
     weak public var expandedView: UIView?
     var expandedViewSize: CGSize?
-    public var customSelectedIconView: UIImageView?
 
     /**
      Initializes and returns a circle menu object.
@@ -136,20 +135,15 @@ open class CircleMenu: UIButton {
     @objc public init(frame: CGRect,
                 normalIcon: String?,
                 expandedView: UIView?,
-                selectedIcon: String?,
                 buttonsCount: Int = 3,
                 duration: Double = 2,
                 distance: Float = 100) {
         super.init(frame: frame)
 
-        self.expandedView = expandedView
         if let icon = normalIcon {
             setImage(UIImage(named: icon), for: .normal)
         }
-
-        if let icon = selectedIcon {
-            setImage(UIImage(named: icon), for: .selected)
-        }
+        self.expandedView = expandedView
 
         self.buttonsCount = buttonsCount
         self.duration = duration
@@ -169,8 +163,6 @@ open class CircleMenu: UIButton {
 
         customNormalIconView = addCustomImageView(state: .normal)
 
-        customSelectedIconView = addCustomImageView(state: .selected)
-        customSelectedIconView?.alpha = 0
 
         setImage(UIImage(), for: .normal)
         setImage(UIImage(), for: .selected)
