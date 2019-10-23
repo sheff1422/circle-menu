@@ -155,7 +155,6 @@ open class CircleMenu: UIButton {
     public required init?(coder aDecoder: NSCoder) {
         super.init(coder: aDecoder)
 
-        commonInit()
     }
 
     fileprivate func commonInit() {
