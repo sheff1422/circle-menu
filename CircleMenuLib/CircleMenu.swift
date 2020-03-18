@@ -318,7 +318,7 @@ open class CircleMenu: UIButton {
                                          attribute: .bottom, multiplier: 1, constant: 0))
 
         platform.addConstraint(NSLayoutConstraint(item: view, attribute: .trailing, relatedBy: .equal, toItem: view.superview,
-                                         attribute: .trailing, multiplier: 1, constant: 0))
+                                         attribute: .trailing, multiplier: 1, constant: -40.0))
         
         view.layer.shadowColor = UIColor(red: 0, green: 71.0/255.0, blue: 103.0/255.0, alpha: 1).cgColor
         view.layer.shadowOpacity = 0.36
