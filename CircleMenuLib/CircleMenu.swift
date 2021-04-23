@@ -262,9 +262,11 @@ open class CircleMenu: UIButton {
                 $0.tag = index
                 $0.addTarget(self, action: #selector(CircleMenu.buttonHandler(_:)), for: UIControl.Event.touchUpInside)
                 $0.alpha = 0
+                $0.isAccessibilityElement = true
             }
             buttons.append(button)
         }
+        platform.accessibilityElements = buttons
         platform.bringSubviewToFront(expandedView)
         return buttons
     }
@@ -484,8 +486,21 @@ open class CircleMenu: UIButton {
             self.buttons = nil
             delegate?.menuCollapsed?(self)
             DispatchQueue.main.asyncAfter(deadline: DispatchTime.now() + duration) {
+                self.platform?.accessibilityViewIsModal = false
                 if self.platform?.superview != nil { self.platform?.removeFromSuperview() }
             }
+        } else {
+            DispatchQueue.main.asyncAfter(deadline: DispatchTime.now() + duration) {
+                self.platform?.accessibilityViewIsModal = true
+                if Thread.current.isMainThread  {
+                    UIAccessibility.post(notification: UIAccessibility.Notification.layoutChanged, argument: self.buttons![0])
+//                    UIAccessibility.post(notification: UIAccessibility.Notification.screenChanged, argument: self.buttons![0])
+                } else {
+                    DispatchQueue.main.async(execute: {
+                        UIAccessibility.post(notification: UIAccessibility.Notification.layoutChanged, argument: self.buttons![0])
+//                        UIAccessibility.post(notification: UIAccessibility.Notification.screenChanged, argument: self.buttons![0])
+                    })
+                }            }
         }
     }
 
